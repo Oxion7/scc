@@ -148,3 +148,101 @@ fn lex_integer_literal(chars: &mut std::iter::Peekable<std::str::Chars>, tokens:
     }
     tokens.push(Token::IntegerLiteral(number));
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::File;
+    use std::io::Write;
+    use std::io::Seek;
+    use std::io::SeekFrom;
+
+    fn create_temp_file(content: &str) -> File {
+        let mut file = tempfile::tempfile().expect("Could not create temp file");
+        file.write_all(content.as_bytes()).expect("Could not write to temp file");
+        file.seek(SeekFrom::Start(0)).expect("Could not seek to start of temp file");
+        file
+    }
+
+    #[test]
+    fn test_empty_file() {
+        let file = create_temp_file("");
+        let tokens = lex(file);
+        assert!(tokens.is_empty());
+    }
+
+    #[test]
+    fn test_single_tokens() {
+        let file = create_temp_file("{ } ( ) ; int return - ~ !");
+        let tokens = lex(file);
+        let expected = vec![
+            Token::OpenBrace,
+            Token::CloseBrace,
+            Token::OpenParenthesis,
+            Token::CloseParenthesis,
+            Token::Semicolon,
+            Token::IntKeyword,
+            Token::ReturnKeyword,
+            Token::Negation,
+            Token::BitwiseComplement,
+            Token::LogicalNegation,
+        ];
+        assert_eq!(tokens, expected);
+    }
+
+    #[test]
+    fn test_identifier_and_integer_literal() {
+        let file = create_temp_file("foo 123");
+        let tokens = lex(file);
+        let expected = vec![
+            Token::Identifier("foo".to_string()),
+            Token::IntegerLiteral("123".to_string()),
+        ];
+        assert_eq!(tokens, expected);
+    }
+
+    #[test]
+    fn test_mixed_tokens() {
+        let file = create_temp_file("int main() { return 42; }");
+        let tokens = lex(file);
+        let expected = vec![
+            Token::IntKeyword,
+            Token::Identifier("main".to_string()),
+            Token::OpenParenthesis,
+            Token::CloseParenthesis,
+            Token::OpenBrace,
+            Token::ReturnKeyword,
+            Token::IntegerLiteral("42".to_string()),
+            Token::Semicolon,
+            Token::CloseBrace,
+        ];
+        assert_eq!(tokens, expected);
+    }
+
+    #[test]
+    fn test_comments() {
+        let file = create_temp_file("int main() { // This is a comment\n return 42; /* This is another comment */ }");
+        let tokens = lex(file);
+        let expected = vec![
+            Token::IntKeyword,
+            Token::Identifier("main".to_string()),
+            Token::OpenParenthesis,
+            Token::CloseParenthesis,
+            Token::OpenBrace,
+            Token::ReturnKeyword,
+            Token::IntegerLiteral("42".to_string()),
+            Token::Semicolon,
+            Token::CloseBrace,
+        ];
+        assert_eq!(tokens, expected);
+    }
+
+    #[test]
+    fn test_unexpected_character() {
+        let file = create_temp_file("int main() { return 42 @; }");
+        let result = std::panic::catch_unwind(|| {
+            lex(file);
+        });
+        assert!(result.is_err());
+    }
+}

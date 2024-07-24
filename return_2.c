@@ -1,4 +1,4 @@
 //this is a comment
 int main() {
-    return 11;
+    return ~(-2);
 }
