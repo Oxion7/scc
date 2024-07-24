@@ -15,6 +15,7 @@ pub enum Token {
     Negation,
     BitwiseComplement,
     LogicalNegation,
+    Decrement,
 }
 
 // AST nodes
@@ -74,6 +75,7 @@ impl fmt::Display for Token {
             Token::Negation => write!(f, "Negation"),
             Token::BitwiseComplement => write!(f, "Bitwise complement"),
             Token::LogicalNegation => write!(f, "Logcial negation"),
+            Token::Decrement => write!(f, "Decrement operator"),
         }
     }
 }

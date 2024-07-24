@@ -39,8 +39,14 @@ pub fn lex (mut file: File) -> Vec<Token> {
                 chars.next();
             },
             '-' => {
-                tokens.push(Token::Negation);
                 chars.next();
+                if let Some(&next_ch) = chars.peek() {
+                    if next_ch == '-' {
+                        tokens.push(Token::Decrement);
+                        chars.next();
+                    }
+                }
+                tokens.push(Token::Negation);  
             }
             '~' => {
                 tokens.push(Token::BitwiseComplement);
@@ -153,9 +159,7 @@ fn lex_integer_literal(chars: &mut std::iter::Peekable<std::str::Chars>, tokens:
 mod tests {
     use super::*;
     use std::fs::File;
-    use std::io::Write;
-    use std::io::Seek;
-    use std::io::SeekFrom;
+    use std::io::{Write,Seek,SeekFrom};
 
     fn create_temp_file(content: &str) -> File {
         let mut file = tempfile::tempfile().expect("Could not create temp file");
@@ -244,5 +248,41 @@ mod tests {
             lex(file);
         });
         assert!(result.is_err());
+    }
+    #[test]
+    fn test_negation() {
+        let file = create_temp_file("int main() {\n return -42;}");
+        let tokens = lex(file);
+        let expected = vec![
+            Token::IntKeyword,
+            Token::Identifier("main".to_string()),
+            Token::OpenParenthesis,
+            Token::CloseParenthesis,
+            Token::OpenBrace,
+            Token::ReturnKeyword,
+            Token::Negation,
+            Token::IntegerLiteral("42".to_string()),
+            Token::Semicolon,
+            Token::CloseBrace,
+        ];
+        assert_eq!(tokens, expected);
+    }
+    #[test]
+    fn test_bitwise_complement() {
+        let file = create_temp_file("int main() {\n return ~42;}");
+        let tokens = lex(file);
+        let expected = vec![
+            Token::IntKeyword,
+            Token::Identifier("main".to_string()),
+            Token::OpenParenthesis,
+            Token::CloseParenthesis,
+            Token::OpenBrace,
+            Token::ReturnKeyword,
+            Token::BitwiseComplement,
+            Token::IntegerLiteral("42".to_string()),
+            Token::Semicolon,
+            Token::CloseBrace,
+        ];
+        assert_eq!(tokens, expected);
     }
 }
